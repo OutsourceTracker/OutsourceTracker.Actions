@@ -21,6 +21,13 @@ on:
       nuget-token:
         description: 'NuGet token for private packages'
         required: false
+    outputs:
+      gitversion-semver:
+        description: 'The calculated SemVer from GitVersion'
+        value: ${{ jobs.build.outputs.gitversion-semver }}
+      gitversion-nugetversion:
+        description: 'The calculated NuGet version from GitVersion'
+        value: ${{ jobs.build.outputs.gitversion-nugetversion }}
 
 jobs:
   build:
