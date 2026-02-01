@@ -1,0 +1,65 @@
+name: Publish to MyGet
+
+on:
+  workflow_call:
+    inputs:
+      dotnet-version:
+        description: 'The .NET SDK version to use (e.g., 10.0.x)'
+        required: true
+        type: string
+        default: '10.0.x'
+      project-path:
+        description: 'Path to the .csproj file (e.g., src/MyProject.csproj)'
+        required: true
+        type: string
+      package-suffix:
+        description: 'Optional suffix for pre-release packages (e.g., beta)'
+        required: false
+        type: string
+        default: ''
+      gitversion-semver:
+        description: 'SemVer from GitVersion (pass from previous step)'
+        required: true
+        type: string
+      gitversion-nugetversion:
+        description: 'NuGetVersion from GitVersion (pass from previous step)'
+        required: true
+        type: string
+    secrets:
+      myget-api-key:
+        description: 'MyGet API key for publishing'
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # For GitVersion if needed, but assuming it's pre-calculated
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ inputs.project-path }}
+
+      - name: Pack NuGet package
+        run: |
+          VERSION_SUFFIX=""
+          if [ -n "${{ inputs.package-suffix }}" ]; then
+            VERSION_SUFFIX="--version-suffix ${{ inputs.package-suffix }}"
+          fi
+          dotnet pack ${{ inputs.project-path }} --configuration Release --no-restore --output ./nupkg /p:PackageVersion=${{ inputs.gitversion-nugetversion }}$VERSION_SUFFIX /p:Version=${{ inputs.gitversion-semver }}$VERSION_SUFFIX /p:IncludeSymbols=true /p:SymbolPackageFormat=snupkg
+
+      - name: Publish to MyGet
+        run: |
+          for pkg in ./nupkg/*.nupkg; do
+            dotnet nuget push "$pkg" --api-key ${{ secrets.myget-api-key }} --source https://www.myget.org/F/outsourcetracker/api/v2/package  # Replace 'your-feed-name' with your MyGet feed
+          done
+          for snupkg in ./nupkg/*.snupkg; do
+            dotnet nuget push "$snupkg" --api-key ${{ secrets.myget-api-key }} --source https://www.myget.org/F/outsourcetracker/symbols/api/v2/package  # For symbols
+          done
