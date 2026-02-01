@@ -58,8 +58,8 @@ jobs:
       - name: Publish to MyGet
         run: |
           for pkg in ./nupkg/*.nupkg; do
-            dotnet nuget push "$pkg" --api-key ${{ secrets.myget-api-key }} --source https://www.myget.org/F/outsourcetracker/api/v2/package  # Replace 'your-feed-name' with your MyGet feed
+            dotnet nuget push "$pkg" --api-key ${{ secrets.myget-api-key }} --source https://www.myget.org/F/outsourcetracker/api/v3/index.json
           done
           for snupkg in ./nupkg/*.snupkg; do
-            dotnet nuget push "$snupkg" --api-key ${{ secrets.myget-api-key }} --source https://www.myget.org/F/outsourcetracker/symbols/api/v2/package  # For symbols
+            dotnet nuget push "$snupkg" --api-key ${{ secrets.myget-api-key }} --source https://www.myget.org/F/outsourcetracker/api/v3/index.json
           done
