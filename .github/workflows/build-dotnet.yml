@@ -26,8 +26,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      gitversion-semver: ${{ steps.gitversion.outputs.SemVer }}
-      gitversion-nugetversion: ${{ steps.gitversion.outputs.NuGetVersion }}
+      gitversion-semver: ${{ steps.gitversion.outputs.semVer }}
+      gitversion-nugetversion: ${{ steps.gitversion.outputs.nuGetVersionV2 }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -38,48 +38,17 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
-          
-      - name: Install GitVersion.Tool
-        run: dotnet tool install --global GitVersion.Tool
-        
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v1
+        with:
+          versionSpec: '6.x'
+
       - name: Execute GitVersion
         id: gitversion
-        run: |
-          echo "Running GitVersion"
-          GITVERSION_JSON=$(dotnet-gitversion /output json /verbosity diagnostic 2>&1) || true
-          
-          if echo "$GITVERSION_JSON" | jq empty >/dev/null 2>&1; then
-            echo "GitVersion succeeded → using real values"
-            
-            # Extract specific values (optional, but keep for logging)
-            SEMVER=$(echo "$GITVERSION_JSON" | jq -r .SemVer)
-            NUGETVER=$(echo "$GITVERSION_JSON" | jq -r .NuGetVersion // .SemVer)  # Use NuGetVersion if available, fallback to SemVer
-            ASMVER=$(echo "$GITVERSION_JSON" | jq -r .AssemblySemVer)
-            
-            # Set all properties as step outputs
-            echo "$GITVERSION_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> $GITHUB_OUTPUT
-            
-          else
-            echo "GitVersion failed → using fallback version"
-            SEMVER="0.0.0-ci.${{ github.run_number }}"
-            NUGETVER="0.0.0-ci.${{ github.run_number }}"
-            ASMVER="0.0.0.0"
-            
-            # For fallback, manually set outputs (expand as needed with other props)
-            echo "SemVer=$SEMVER" >> $GITHUB_OUTPUT
-            echo "NuGetVersion=$NUGETVER" >> $GITHUB_OUTPUT
-            echo "AssemblySemVer=$ASMVER" >> $GITHUB_OUTPUT
-            echo "Major=0" >> $GITHUB_OUTPUT
-            echo "Minor=0" >> $GITHUB_OUTPUT
-            echo "Patch=0" >> $GITHUB_OUTPUT
-            # Add more fallback props if desired, e.g., PreReleaseTag=""
-          fi
-          
-          # Log final calculated versions
-          echo "Final calculated versions:"
-          echo "  SemVer:        $SEMVER"
-          echo "  NuGet version: $NUGETVER"
-          # Optionally print all outputs here for debugging: cat $GITHUB_OUTPUT | grep '^'
+        uses: gittools/actions/gitversion/execute@v1
+        with:
+          useConfigFile: true  # If you have GitVersion.yml in your repo; remove if not
 
       - name: Restore dependencies
         run: dotnet restore ${{ inputs.project-path }}
@@ -87,11 +56,11 @@ jobs:
           NUGET_AUTH_TOKEN: ${{ secrets.nuget-token }}
 
       - name: Build project with versioning
-        run: dotnet build ${{ inputs.project-path }} --no-restore --configuration Release /p:Version=${{ steps.gitversion.outputs.SemVer }} /p:AssemblyVersion=${{ steps.gitversion.outputs.AssemblySemVer }} /p:FileVersion=${{ steps.gitversion.outputs.AssemblySemFileVer }} /p:InformationalVersion=${{ steps.gitversion.outputs.InformationalVersion }} /p:AssemblyInformationalVersion=${{ steps.gitversion.outputs.InformationalVersion }}
+        run: dotnet build ${{ inputs.project-path }} --no-restore --configuration Release /p:Version=${{ steps.gitversion.outputs.semVer }} /p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }} /p:FileVersion=${{ steps.gitversion.outputs.assemblySemFileVer }} /p:InformationalVersion=${{ steps.gitversion.outputs.informationalVersion }} /p:AssemblyInformationalVersion=${{ steps.gitversion.outputs.informationalVersion }}
 
       - name: Run tests
         run: dotnet test ${{ inputs.project-path }} --no-build --verbosity normal --configuration Release
 
       - name: Publish Blazor WebAssembly (if enabled)
         if: inputs.publish-blazor == true
-        run: dotnet publish ${{ inputs.project-path }} --configuration Release --output ./publish /p:BlazorEnableCompression=true /p:Version=${{ steps.gitversion.outputs.SemVer }} /p:AssemblyVersion=${{ steps.gitversion.outputs.AssemblySemVer }} /p:FileVersion=${{ steps.gitversion.outputs.AssemblySemFileVer }} /p:InformationalVersion=${{ steps.gitversion.outputs.InformationalVersion }} /p:AssemblyInformationalVersion=${{ steps.gitversion.outputs.InformationalVersion }}
+        run: dotnet publish ${{ inputs.project-path }} --configuration Release --output ./publish /p:BlazorEnableCompression=true /p:Version=${{ steps.gitversion.outputs.semVer }} /p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }} /p:FileVersion=${{ steps.gitversion.outputs.assemblySemFileVer }} /p:InformationalVersion=${{ steps.gitversion.outputs.informationalVersion }} /p:AssemblyInformationalVersion=${{ steps.gitversion.outputs.informationalVersion }}
