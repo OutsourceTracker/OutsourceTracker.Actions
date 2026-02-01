@@ -50,6 +50,11 @@ jobs:
         with:
           useConfigFile: true  # If you have GitVersion.yml in your repo; remove if not
           fetchAll: true
+          
+      - name: Log GitVersion Outputs for Debugging
+        run: |
+          echo "Calculated SemVer: ${{ steps.gitversion.outputs.semVer }}"
+          echo "Calculated NuGetVersion: ${{ steps.gitversion.outputs.nuGetVersionV2 }}"
 
       - name: Restore dependencies
         run: dotnet restore ${{ inputs.project-path }}
