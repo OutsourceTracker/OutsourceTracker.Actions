@@ -49,6 +49,7 @@ jobs:
         uses: gittools/actions/gitversion/execute@v1
         with:
           useConfigFile: true  # If you have GitVersion.yml in your repo; remove if not
+          fetchAll: true
 
       - name: Restore dependencies
         run: dotnet restore ${{ inputs.project-path }}
