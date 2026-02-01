@@ -25,6 +25,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      gitversion-semver: ${{ steps.gitversion.outputs.SemVer }}
+      gitversion-nugetversion: ${{ steps.gitversion.outputs.NuGetVersion }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
